@@ -1,6 +1,9 @@
 # citiroc_simulation
 Analytical simulation of signal processing in the CITIROC read-out chip by Omega. For physicists
 
+## THIS IS A WORK IN PROGRESS!!!
+
+
 The `Bode.c` macro produces Bode diagrams (gain as a function of the input frequency) for different HG DAC values, for the Fast shaper part of the CITIROC.
 
 ### Usage
