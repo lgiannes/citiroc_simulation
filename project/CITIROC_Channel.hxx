@@ -1,0 +1,18 @@
+//
+// Created by Lorenzo Giannessi on 02.03.2025.
+//
+
+#ifndef CITIROC_SIMULATION_CITIROC_CHANNEL_HXX
+#define CITIROC_SIMULATION_CITIROC_CHANNEL_HXX
+
+
+class CITIROC_CHANNEL {
+private:
+    int HG_DAC, LG_DAC;
+
+
+
+};
+
+
+#endif //CITIROC_SIMULATION_CITIROC_CHANNEL_HXX
