@@ -26,6 +26,8 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 set(SOURCES
         src/CITIROC_Channel.cxx
         app/main.cxx
+        src/TransferFunctions.hxx
+        src/ILT.hxx
 )
 
 # Define the executable
