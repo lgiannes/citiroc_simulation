@@ -4,6 +4,12 @@
 ----------------------------------------------------------------*/
 #include <complex>
 #include <functional>
+#include <iomanip>
+#include <vector>
+
+#include <TGraph.h>
+#include <TCanvas.h>
+#include <TLine.h>
 
 using namespace std;
 
@@ -121,23 +127,91 @@ Inputs: F(s), a function pointer to some complex function of a single
       return 1.0 / T * exp(gamma * t) * (A[2 * M + 1] / B[2 * M + 1]).real();
     }
 //-----------------------------------------------------------------------
-    inline double inverseLaplace(function<cmplex(cmplex)> F, double t, int N) {
-      if (t == 0) return 0.0;  // Prevent division by zero issues
+    inline double inverseLaplace(function<cmplex(cmplex)> F, double t, int N=32) {
+      if (t <= 0) {
+        throw std::invalid_argument("Time t must be positive.");
+      }
+//      if (t == 0) return 0.0;  // Prevent division by zero issues
 
       cmplex I(0, 1);  // Imaginary unit
       double pi = M_PI;
-      double sum = 0.0;
+      cmplex sum = 0.0;
+
+      // Constants
+      double shift = 0.1;
+      // Shift contour to the right in case there is a pole on the positive real axis : Note the contour will
+      // not be optimal since it was originally devoloped for function with
+      // singularities on the negative real axis
+      // For example take F(s) = 1/(s-1), it has a pole at s = 1, the contour needs to be shifted with one
+      // unit, i.e shift  = 1.
+      double sigma = 0.6122;
+      double mu = 0.5017;
+      double nu = 0.2645;
+      double alpha = 0.6407;
+      double h = 2 * pi / (double)N;
+
+      std::vector<double> Res, Ims;
+      TGraph* contour = new TGraph();
 
       for (int k = 1; k <= N; k++) {
-        double theta_k = k * pi / N;
-        cmplex s = (N / t) * (0.5015 * theta_k * (1 / tan(theta_k)) - I);
-        cmplex F_s = F(s);
-        cmplex term = (2.0 * N / t) * exp(s * t) * F_s * (1.0 / tan(theta_k) + I);
-        sum += term.real();  // Take the real part
+        double theta_k = - pi + (k - 0.5) * h;
+        cmplex s = (double)N/t*( -sigma + theta_k * (mu / tan(alpha*theta_k) + I * nu) ) + shift;
+        Res.push_back(s.real());
+        Ims.push_back(s.imag());
+        contour->SetPoint(k-1, s.real(), s.imag());
+        cmplex s_prime = (double)N/t*( mu / tan(alpha*theta_k) + mu * alpha * theta_k/cos(alpha*theta_k)/cos(alpha*theta_k) + I * nu );
+        cmplex term = exp(s*t) * F(s) * s_prime;
+        std::cout<<k<<"  cos(Im(s*t)): "<<cos(s.imag()*t)<<"  s': "<<s_prime<<" e^(st): "<<exp(s*t)<<" F(s): "<<F(s)<<"  term: "<<term<<std::endl;
+        sum += (1.0/(I*(double)N)) * term;
       }
 
-      return (2.0 / pi) * sum;
+      std::cout<<"sum:     "<<sum<<std::endl;
+//      std::cout<<"Re(sum): "<<sum.real()<<std::endl;
+
+      TCanvas* c = new TCanvas("c", "c", 800, 800);
+      contour->Draw("APL*");
+      TLine* im_axis = new TLine(0, -1000, 0, 1000);
+      im_axis->Draw();
+      TLine* re_axis = new TLine(-1000, 0, 1000, 0);
+      re_axis->Draw();
+      c->SaveAs(Form("contour.png"));
+      return (sum).real();
     }
+
+    inline double deHoogInverseLaplace(const std::function<cmplex(cmplex)>& F, double t, double tol = 1e-5, int max_iter = 100) {
+      const double gamma = 0.0; // Shift parameter
+      const double T = 2 * t;   // Scaling parameter
+      const cmplex I(0.0, 1.0); // Imaginary unit
+
+      std::vector<cmplex> p(2 * max_iter + 1);
+      std::vector<cmplex> f(2 * max_iter + 1);
+
+      // Compute p_k and f_k
+      for (int k = 0; k <= 2 * max_iter; ++k) {
+        double theta_k = M_PI * k / max_iter;
+        p[k] = gamma + (I * theta_k / T);
+        f[k] = F(p[k]) * std::exp(p[k] * t);
+      }
+
+      // Apply the ε-algorithm for convergence acceleration
+      std::vector<std::vector<cmplex>> epsilon(2 * max_iter + 1, std::vector<cmplex>(2 * max_iter + 1, 0.0));
+
+      for (int i = 0; i <= 2 * max_iter; ++i) {
+        epsilon[i][0] = f[i];
+      }
+
+      for (int j = 1; j <= 2 * max_iter; ++j) {
+        for (int i = 0; i <= 2 * max_iter - j; ++i) {
+          epsilon[i][j] = epsilon[i + 1][j - 1] + 1.0 / (epsilon[i + 1][j - 1] - epsilon[i][j - 1]);
+        }
+      }
+
+      cmplex result = epsilon[0][2 * max_iter];
+
+      return result.real();
+    }
+
+
 
 };
 
