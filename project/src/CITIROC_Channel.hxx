@@ -10,14 +10,16 @@
 #include <TH1D.h>
 #include <TMath.h>
 #include <TF1.h>
-#include "ILT.hxx"
+#include <TCanvas.h>
 
 // others
+#include "ILT.hxx"
 
 
 
 class CITIROC_Channel {
 private:
+    bool _debug{true};
     // Configuration
     bool _isConfigured{false};
     int _HG, _LG; // Gain (6-bit: 0-63)

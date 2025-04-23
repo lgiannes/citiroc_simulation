@@ -127,7 +127,7 @@ Inputs: F(s), a function pointer to some complex function of a single
       return 1.0 / T * exp(gamma * t) * (A[2 * M + 1] / B[2 * M + 1]).real();
     }
 //-----------------------------------------------------------------------
-    inline double inverseLaplace(function<cmplex(cmplex)> F, double t, int N=32) {
+    inline double talbotInverseLaplace(function<cmplex(cmplex)> F, double t, int N=32) {
       if (t <= 0) {
         throw std::invalid_argument("Time t must be positive.");
       }
@@ -168,14 +168,42 @@ Inputs: F(s), a function pointer to some complex function of a single
       std::cout<<"sum:     "<<sum<<std::endl;
 //      std::cout<<"Re(sum): "<<sum.real()<<std::endl;
 
-      TCanvas* c = new TCanvas("c", "c", 800, 800);
-      contour->Draw("APL*");
-      TLine* im_axis = new TLine(0, -1000, 0, 1000);
-      im_axis->Draw();
-      TLine* re_axis = new TLine(-1000, 0, 1000, 0);
-      re_axis->Draw();
-      c->SaveAs(Form("contour.png"));
+//      TCanvas* c = new TCanvas("c", "c", 800, 800);
+//      contour->Draw("APL*");
+//      TLine* im_axis = new TLine(0, -1000, 0, 1000);
+//      im_axis->Draw();
+//      TLine* re_axis = new TLine(-1000, 0, 1000, 0);
+//      re_axis->Draw();
+//      c->SaveAs(Form("contour.png"));
       return (sum).real();
+    }
+
+    inline double zakianInverseLaplace(const std::function<cmplex(cmplex)>& F, double t){
+      // Updated Zakian constants (zk and ck)
+      const std::complex<double> zk[5] = {
+              {12.8377, 1.66606},
+              {12.2261, 5.01272},
+              {10.9343, 8.40967},
+              {8.77643, 11.9219},
+              {5.22545, 15.7295}
+      };
+      const std::complex<double> ck[5] = {
+              {-36902.0, 196990.0},
+              {61277.0, -95408.6},
+              {-28916.6, 18169.2},
+              {4655.36, -1.90177},
+              {-118.741, -141.304}
+      };
+
+      if (t <= 0) return NAN;
+
+      std::complex<double> sum = 0.0;
+      for (int k = 0; k < 5; ++k) {
+        std::complex<double> s = zk[k] / t;
+        sum += ck[k] * F(s);
+      }
+
+      return (2.0 / t) * std::real(sum);
     }
 
     inline double deHoogInverseLaplace(const std::function<cmplex(cmplex)>& F, double t, double tol = 1e-5, int max_iter = 100) {
