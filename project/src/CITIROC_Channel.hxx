@@ -29,6 +29,7 @@ private:
     bool _SCAorPeakDetectorLG; // Switch between Peak Detecor and SCA for charge measurement (0: PD, 1: SCA)
     bool _SCAorPeakDetectorHG; // Switch between Peak Detecor and SCA for charge measurement (0: PD, 1: SCA)
     bool _FastShaperOnLG; // Switch preamplifiers to FSH circuit (0: HG, 1: LG)
+    bool _SlowShaperOnLG; // decide whether to plot LG or HG output for the charge circuit
 
     // Components
     // HG Preamplifier
@@ -64,6 +65,9 @@ public:
     ILT::cmplex TF_HGpreamp(const ILT::cmplex &s);
     ILT::cmplex TF_LGpreamp(const ILT::cmplex &s);
     ILT::cmplex TF_TimePath(const ILT::cmplex &s);
+
+    ILT::cmplex TF_SSH(const ILT::cmplex &s);
+    ILT::cmplex TF_ChargePath(const ILT::cmplex &s);
 
     TH1D* FastDeltaResponse(double tmin,double tmax, int steps);
     TH1D* SlowDeltaResponse(double tmin,double tmax, int steps);

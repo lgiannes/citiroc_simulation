@@ -38,6 +38,7 @@ void CITIROC_Channel::DefaultConfigure(){
   _SCAorPeakDetectorLG = false;
   _SCAorPeakDetectorHG = false;
   _FastShaperOnLG = false;
+  _SlowShaperOnLG = false;
   std::cout << "Default configuration set" << std::endl;
 }
 
@@ -65,6 +66,10 @@ ILT::cmplex CITIROC_Channel::TF_LGpreamp(const ILT::cmplex &s) {
 
 }
 
+ILT::cmplex CITIROC_Channel::TF_SSH(const ILT::cmplex &s) {
+
+
+}
 
 ILT::cmplex CITIROC_Channel::TF_FSH(const ILT::cmplex &s) {
   double tau = _FSH_tau;
@@ -88,6 +93,16 @@ ILT::cmplex CITIROC_Channel::TF_TimePath(const ILT::cmplex &s) {
   }
 }
 
+ILT::cmplex CITIROC_Channel::TF_ChargePath(const ILT::cmplex &s) {
+  if(_SlowShaperOnLG){
+    return TF_LGpreamp(s) * TF_SSH(s);
+  }else{
+    return TF_HGpreamp(s) * TF_SSH(s);
+  }
+}
+
+
+
 TH1D* CITIROC_Channel::FastDeltaResponse(double tmin,double tmax, int steps){
 
   TH1D* delta_response = new TH1D("delta_response","delta_response",steps,tmin,tmax);
@@ -107,14 +122,14 @@ TH1D* CITIROC_Channel::FastDeltaResponse(double tmin,double tmax, int steps){
     // Debug: draw transfer function in Laplace space
     TF1 *f_hg = new TF1("f_hg",
                         [this](double *x, double *p) { return abs(TF_HGpreamp(ILT::cmplex(0, x[0]))); },
-                        1, 1e12, 0);
+                        1e-9, 1e3, 0);
     TF1 *f_fsh = new TF1("f_fsh",
                          [this](double *x, double *p) { return abs(TF_FSH(ILT::cmplex(0, x[0]))); },
-                         1, 1e12, 0);
+                         1e-9, 1e3, 0);
 
     TF1 *f = new TF1("f",
                      [this](double *x, double *p) { return abs(TF_TimePath(ILT::cmplex(0, x[0]))); },
-                     1, 1e12, 0);
+                     1e-9, 1e3, 0);
     TCanvas *c = new TCanvas("c", "c", 1800, 600);
     c->Divide(3, 1);
     c->cd(1);
@@ -135,23 +150,39 @@ TH1D* CITIROC_Channel::FastDeltaResponse(double tmin,double tmax, int steps){
   ////////////////////////// debug ////////////////////////////////////
 
 
-
   // Get inverse laplace transform
   for(int t_step=0;t_step<steps;t_step++){
     double t = tmin + t_step*(tmax-tmin)/steps;
 
     std::function<ILT::cmplex(const ILT::cmplex&)> Fs =
-//            [this](const ILT::cmplex &s) { return 1.0 / (s+1.); }; // test function
-              [this](const ILT::cmplex &s) { return TF_TimePath(s); };
+            [this](const ILT::cmplex &s) { return 1.0 / (s+0.2) / (s+0.2); }; // test function
+//              [this](const ILT::cmplex &s) { return TF_TimePath(s); };
 
     double ft = ILT::zakianInverseLaplace(Fs, t);
-    cout << "[Debug] step: "<<t_step<< " t= " << t << " f(t)= " << ft << endl;
+//    cout << "[Debug] step: "<<t_step<< " t= " << t << " f(t)= " << ft << endl;
     delta_response->SetBinContent(t_step+1,ft);
   }
 
+  return delta_response;
+}
 
+TH1D* CITIROC_Channel::SlowDeltaResponse(double tmin,double tmax, int steps) {
+
+  TH1D* delta_response = new TH1D("delta_response","delta_response",steps,tmin,tmax);
+
+  // Get inverse laplace transform
+  for(int t_step=0;t_step<steps;t_step++) {
+    double t = tmin + t_step * (tmax - tmin) / steps;
+
+    std::function<ILT::cmplex(const ILT::cmplex &)> Fs =
+            [this](const ILT::cmplex &s) { return TF_ChargePath(s); }; // test function
+
+    double ft = ILT::zakianInverseLaplace(Fs, t);
+    delta_response->SetBinContent(t_step + 1, ft);
+  }
 
   return delta_response;
 }
+
 
 
